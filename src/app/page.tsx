@@ -11,7 +11,7 @@ export default function Home() {
   const [result, setResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAction = (nextMode: "about" | "thesis" | "telegram") => {
+  const handleAction = async (nextMode: "about" | "thesis" | "telegram") => {
     if (!url.trim()) {
       setResult("Пожалуйста, введите URL статьи.");
       setMode(null);
@@ -21,23 +21,35 @@ export default function Home() {
     setIsLoading(true);
     setMode(nextMode);
 
-    // Пока что просто имитация ответа без реального вызова AI.
-    setTimeout(() => {
-      if (nextMode === "about") {
+    try {
+      // Вызываем API для парсинга статьи
+      const response = await fetch("/api/parse-article", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
         setResult(
-          "Здесь будет краткое описание статьи на основе анализа ИИ.",
+          `Ошибка: ${errorData.error || "Не удалось обработать статью"}`
         );
-      } else if (nextMode === "thesis") {
-        setResult(
-          "Здесь будут сгенерированы основные тезисы статьи в виде списка.",
-        );
-      } else {
-        setResult(
-          "Здесь будет сгенерирован готовый пост для Telegram по содержанию статьи.",
-        );
+        setIsLoading(false);
+        return;
       }
+
+      const data = await response.json();
+      
+      // Форматируем JSON для красивого отображения
+      const jsonResult = JSON.stringify(data, null, 2);
+      setResult(jsonResult);
+    } catch (error) {
+      setResult(`Ошибка при обработке: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
       setIsLoading(false);
-    }, 600);
+    }
   };
 
   return (

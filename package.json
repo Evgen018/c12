@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "next": "16.0.10",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },
   "devDependencies": {
+    "@types/cheerio": "^0.22.35",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
