@@ -45,7 +45,7 @@ export default function Home() {
       <main className="w-full max-w-3xl rounded-2xl bg-slate-900/40 border border-slate-800 shadow-xl shadow-black/40 backdrop-blur-md p-6 sm:p-8 space-y-8">
         <header className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.25em] text-sky-400/90">
-            c7 · референт‑переводчик
+            референт‑переводчик
           </p>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
             Кратко и по делу про любую англоязычную статью
