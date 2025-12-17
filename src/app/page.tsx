@@ -69,14 +69,22 @@ export default function Home() {
 
       const parsedData = await parseResponse.json();
 
+      // Проверяем наличие контента
+      if (!parsedData.content) {
+        setResult("Ошибка: Не удалось извлечь контент статьи для обработки.\n\nПопробуйте другой URL или проверьте, что статья доступна.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Проверяем минимальную длину контента
+      if (parsedData.content.trim().length < 50) {
+        setResult("Ошибка: Извлеченный контент слишком короткий для обработки.\n\nВозможно, статья не была полностью загружена. Попробуйте другой URL.");
+        setIsLoading(false);
+        return;
+      }
+
       // Если режим перевода, переводим контент
       if (nextMode === "translate") {
-        if (!parsedData.content) {
-          setResult("Не удалось извлечь контент статьи для перевода.");
-          setIsLoading(false);
-          return;
-        }
-
         const translateResponse = await fetch("/api/translate", {
           method: "POST",
           headers: {
@@ -99,12 +107,60 @@ export default function Home() {
         const translateData = await translateResponse.json();
         setResult(translateData.translation || "Перевод не получен.");
       } else {
-        // Для других режимов показываем JSON
-        const jsonResult = JSON.stringify(parsedData, null, 2);
-        setResult(jsonResult);
+        // Для режимов about, thesis, telegram вызываем AI-обработку
+        const aiResponse = await fetch("/api/ai-process", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            content: parsedData.content,
+            mode: nextMode 
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          let errorData;
+          try {
+            errorData = await aiResponse.json();
+          } catch {
+            errorData = { 
+              error: `HTTP ${aiResponse.status}: ${aiResponse.statusText}`,
+              details: "Не удалось обработать ответ от сервера"
+            };
+          }
+          
+          const errorMessage = errorData.error || "Не удалось обработать статью с помощью AI";
+          const errorDetails = errorData.details ? `\n\nДетали: ${errorData.details}` : "";
+          const suggestion = aiResponse.status === 429 
+            ? "\n\n💡 Совет: Подождите немного и попробуйте снова."
+            : aiResponse.status === 500
+            ? "\n\n💡 Совет: Попробуйте еще раз через несколько секунд."
+            : "";
+          
+          setResult(
+            `Ошибка AI-обработки: ${errorMessage}${errorDetails}${suggestion}`
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        const aiData = await aiResponse.json();
+        
+        if (!aiData.result || aiData.result.trim().length === 0) {
+          setResult("Ошибка: AI сервис вернул пустой результат.\n\nПопробуйте еще раз или выберите другую статью.");
+          setIsLoading(false);
+          return;
+        }
+        
+        setResult(aiData.result);
       }
     } catch (error) {
-      setResult(`Ошибка при обработке: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Error in handleAction:", error);
+      setResult(
+        `Ошибка при обработке запроса:\n\n${errorMessage}\n\nПроверьте подключение к интернету и попробуйте еще раз.`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +305,7 @@ export default function Home() {
         <footer className="pt-1 text-[11px] dark:text-slate-500 text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>Сервис-помощник для работы с англоязычными текстами.</span>
           <span className="hidden sm:inline">·</span>
-          <span>Интеграция с реальным AI будет добавлена позже.</span>
+          <span>Обработка с помощью AI через OpenRouter.</span>
         </footer>
       </main>
     </div>
