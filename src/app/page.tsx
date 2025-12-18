@@ -296,7 +296,7 @@ export default function Home() {
                 aria-label={language === "ru" ? "Switch to Montenegrin" : "Переключить на русский"}
                 title={language === "ru" ? "Switch to Montenegrin" : "Переключить на русский"}
               >
-                {language === "ru" ? "РУ" : "ME"}
+                {language === "ru" ? "ME" : "РУ"}
               </button>
               <button
                 onClick={toggleTheme}
