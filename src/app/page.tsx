@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
   // Чтобы показать кнопку, измените значение на true
-  const SHOW_TRANSLATE_BUTTON = false;
+  const SHOW_TRANSLATE_BUTTON = true;
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [url, setUrl] = useState("");
@@ -15,6 +15,7 @@ export default function Home() {
   );
   const [result, setResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [processStatus, setProcessStatus] = useState<string | null>(null);
 
   // Загружаем тему из localStorage при монтировании и применяем сразу
   useEffect(() => {
@@ -46,11 +47,13 @@ export default function Home() {
     if (!url.trim()) {
       setResult("Пожалуйста, введите URL статьи.");
       setMode(null);
+      setProcessStatus(null);
       return;
     }
 
     setIsLoading(true);
     setMode(nextMode);
+    setProcessStatus("Загружаю статью…");
 
     try {
       // Сначала парсим статью
@@ -68,6 +71,7 @@ export default function Home() {
           `Ошибка: ${errorData.error || "Не удалось обработать статью"}`
         );
         setIsLoading(false);
+        setProcessStatus(null);
         return;
       }
 
@@ -77,6 +81,7 @@ export default function Home() {
       if (!parsedData.content) {
         setResult("Ошибка: Не удалось извлечь контент статьи для обработки.\n\nПопробуйте другой URL или проверьте, что статья доступна.");
         setIsLoading(false);
+        setProcessStatus(null);
         return;
       }
 
@@ -84,11 +89,13 @@ export default function Home() {
       if (parsedData.content.trim().length < 50) {
         setResult("Ошибка: Извлеченный контент слишком короткий для обработки.\n\nВозможно, статья не была полностью загружена. Попробуйте другой URL.");
         setIsLoading(false);
+        setProcessStatus(null);
         return;
       }
 
       // Если режим перевода, переводим контент
       if (nextMode === "translate") {
+        setProcessStatus("Перевожу статью…");
         const translateResponse = await fetch("/api/translate", {
           method: "POST",
           headers: {
@@ -105,13 +112,21 @@ export default function Home() {
             `Ошибка перевода: ${errorMessage}${errorDetails}`
           );
           setIsLoading(false);
+          setProcessStatus(null);
           return;
         }
 
         const translateData = await translateResponse.json();
         setResult(translateData.translation || "Перевод не получен.");
+        setProcessStatus(null);
       } else {
         // Для режимов about, thesis, telegram вызываем AI-обработку
+        const statusMessages = {
+          about: "Анализирую статью…",
+          thesis: "Формирую тезисы…",
+          telegram: "Создаю пост для Telegram…"
+        };
+        setProcessStatus(statusMessages[nextMode]);
         const aiResponse = await fetch("/api/ai-process", {
           method: "POST",
           headers: {
@@ -146,6 +161,7 @@ export default function Home() {
             `Ошибка AI-обработки: ${errorMessage}${errorDetails}${suggestion}`
           );
           setIsLoading(false);
+          setProcessStatus(null);
           return;
         }
 
@@ -154,10 +170,12 @@ export default function Home() {
         if (!aiData.result || aiData.result.trim().length === 0) {
           setResult("Ошибка: AI сервис вернул пустой результат.\n\nПопробуйте еще раз или выберите другую статью.");
           setIsLoading(false);
+          setProcessStatus(null);
           return;
         }
         
         setResult(aiData.result);
+        setProcessStatus(null);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -165,6 +183,7 @@ export default function Home() {
       setResult(
         `Ошибка при обработке запроса:\n\n${errorMessage}\n\nПроверьте подключение к интернету и попробуйте еще раз.`
       );
+      setProcessStatus(null);
     } finally {
       setIsLoading(false);
     }
@@ -230,18 +249,22 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="url"
-              placeholder="https://example.com/article"
+              placeholder="Введите URL статьи, например: https://example.com/article"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               className="flex-1 rounded-xl dark:border-slate-700 border-slate-300 dark:bg-slate-900/60 bg-white dark:text-slate-50 text-slate-900 px-3 py-2.5 text-sm dark:placeholder:text-slate-500 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition border"
             />
           </div>
+          <p className="text-xs dark:text-slate-400 text-slate-500">
+            Укажите ссылку на англоязычную статью
+          </p>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               type="button"
               onClick={() => handleAction("about")}
               disabled={isLoading}
+              title="Получить краткое описание статьи"
               className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
                 mode === "about"
                   ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
@@ -254,6 +277,7 @@ export default function Home() {
               type="button"
               onClick={() => handleAction("thesis")}
               disabled={isLoading}
+              title="Сформировать тезисы статьи"
               className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
                 mode === "thesis"
                   ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
@@ -266,6 +290,7 @@ export default function Home() {
               type="button"
               onClick={() => handleAction("telegram")}
               disabled={isLoading}
+              title="Создать пост для Telegram на основе статьи"
               className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
                 mode === "telegram"
                   ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
@@ -279,6 +304,7 @@ export default function Home() {
                 type="button"
                 onClick={() => handleAction("translate")}
                 disabled={isLoading}
+                title="Перевести статью на русский язык"
                 className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
                   mode === "translate"
                     ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
@@ -290,6 +316,14 @@ export default function Home() {
             )}
           </div>
         </section>
+
+        {processStatus && (
+          <div className="rounded-xl dark:bg-sky-500/10 bg-sky-50 dark:border-sky-500/20 border-sky-200 border p-3 sm:p-4">
+            <p className="text-sm dark:text-sky-400 text-sky-600 font-medium">
+              {processStatus}
+            </p>
+          </div>
+        )}
 
         <section className="rounded-xl dark:border-slate-800 border-slate-200 dark:bg-slate-950/40 bg-slate-50/80 border p-4 sm:p-5 min-h-[140px] space-y-2">
           <div className="flex items-center justify-between gap-2">
