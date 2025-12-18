@@ -255,9 +255,6 @@ export default function Home() {
               className="flex-1 rounded-xl dark:border-slate-700 border-slate-300 dark:bg-slate-900/60 bg-white dark:text-slate-50 text-slate-900 px-3 py-2.5 text-sm dark:placeholder:text-slate-500 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition border"
             />
           </div>
-          <p className="text-xs dark:text-slate-400 text-slate-500">
-            Укажите ссылку на англоязычную статью
-          </p>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
