@@ -6,11 +6,11 @@ import { useState, useEffect } from "react";
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
   // Чтобы показать кнопку, измените значение на true
-  const SHOW_TRANSLATE_BUTTON = true;
+  const SHOW_TRANSLATE_BUTTON = false;
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [url, setUrl] = useState("");
-  const [mode, setMode] = useState<"about" | "thesis" | "telegram" | "translate" | null>(
+  const [mode, setMode] = useState<"about" | "thesis" | "telegram" | "translate" | "illustration" | null>(
     null,
   );
   const [result, setResult] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export default function Home() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  const handleAction = async (nextMode: "about" | "thesis" | "telegram" | "translate") => {
+  const handleAction = async (nextMode: "about" | "thesis" | "telegram" | "translate" | "illustration") => {
     if (!url.trim()) {
       setResult("Пожалуйста, введите URL статьи.");
       setMode(null);
@@ -120,11 +120,12 @@ export default function Home() {
         setResult(translateData.translation || "Перевод не получен.");
         setProcessStatus(null);
       } else {
-        // Для режимов about, thesis, telegram вызываем AI-обработку
+        // Для режимов about, thesis, telegram, illustration вызываем AI-обработку
         const statusMessages = {
           about: "Анализирую статью…",
           thesis: "Формирую тезисы…",
-          telegram: "Создаю пост для Telegram…"
+          telegram: "Создаю пост для Telegram…",
+          illustration: "Создаю иллюстрацию…"
         };
         setProcessStatus(statusMessages[nextMode]);
         const aiResponse = await fetch("/api/ai-process", {
@@ -295,6 +296,19 @@ export default function Home() {
               } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
             >
               Пост для Telegram
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAction("illustration")}
+              disabled={isLoading}
+              title="Создать иллюстрацию на основе статьи"
+              className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
+                mode === "illustration"
+                  ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
+                  : "dark:bg-slate-800/80 bg-slate-100 dark:text-slate-50 text-slate-900 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200"
+              } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
+            >
+              Иллюстрация
             </button>
             {SHOW_TRANSLATE_BUTTON && (
               <button
