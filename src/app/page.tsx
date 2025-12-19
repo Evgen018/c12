@@ -9,7 +9,7 @@ import { translations, getTranslation, type Language } from "@/lib/translations"
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
   // Чтобы показать кнопку, измените значение на true
-  const SHOW_TRANSLATE_BUTTON = false;
+  const SHOW_TRANSLATE_BUTTON = true;
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [language, setLanguage] = useState<Language>("ru");
