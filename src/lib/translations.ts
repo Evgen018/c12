@@ -22,6 +22,8 @@ export const translations = {
     telegramButtonTitle: "Создать пост для Telegram на основе статьи",
     translateButton: "Перевести",
     translateButtonTitle: "Перевести статью на русский язык",
+    illustrationButton: "Иллюстрация",
+    illustrationButtonTitle: "Создать иллюстрацию для статьи",
     
     // Status messages
     loadingArticle: "Загружаю статью…",
@@ -29,6 +31,9 @@ export const translations = {
     formingThesis: "Формирую тезисы…",
     creatingTelegramPost: "Создаю пост для Telegram…",
     translating: "Перевожу статью…",
+    creatingIllustration: "Создаю иллюстрацию…",
+    generatingPrompt: "Создаю промпт для изображения…",
+    generatingImage: "Генерирую изображение…",
     generating: "Идет генерация…",
     
     // Results
@@ -52,6 +57,11 @@ export const translations = {
     errorTranslateLimit: "Превышен лимит запросов к сервису перевода. Попробуйте позже.",
     errorTranslateService: "Временная ошибка сервиса перевода. Попробуйте позже.",
     errorTranslate: "Не удалось перевести статью. Попробуйте еще раз.",
+    errorIllustrationAuth: "Ошибка аутентификации с сервисом генерации изображений. Проверьте настройки.",
+    errorIllustrationLimit: "Превышен лимит запросов к сервису генерации изображений. Попробуйте позже.",
+    errorIllustrationService: "Временная ошибка сервиса генерации изображений. Попробуйте позже.",
+    errorIllustration: "Не удалось создать иллюстрацию. Попробуйте еще раз.",
+    errorIllustrationModelLoading: "Модель генерации изображений загружается. Попробуйте через несколько секунд.",
     errorNetwork: "Ошибка подключения к интернету. Проверьте соединение и попробуйте еще раз.",
     errorUnknown: "Произошла непредвиденная ошибка. Попробуйте еще раз.",
     
@@ -80,6 +90,8 @@ export const translations = {
     telegramButtonTitle: "Kreiraj post za Telegram na osnovu članka",
     translateButton: "Prevedi",
     translateButtonTitle: "Prevedi članak na crnogorski jezik",
+    illustrationButton: "Ilustracija",
+    illustrationButtonTitle: "Kreiraj ilustraciju za članak",
     
     // Status messages
     loadingArticle: "Učitavam članak…",
@@ -87,6 +99,9 @@ export const translations = {
     formingThesis: "Formiram teze…",
     creatingTelegramPost: "Kreiram post za Telegram…",
     translating: "Prevodim članak…",
+    creatingIllustration: "Kreiram ilustraciju…",
+    generatingPrompt: "Kreiram prompt za sliku…",
+    generatingImage: "Generišem sliku…",
     generating: "Generišem…",
     
     // Results
@@ -110,6 +125,11 @@ export const translations = {
     errorTranslateLimit: "Prekoračen limit zahtjeva ka servisu za prevod. Pokušajte kasnije.",
     errorTranslateService: "Privremena greška servisa za prevod. Pokušajte kasnije.",
     errorTranslate: "Nije moguće prevesti članak. Pokušajte ponovo.",
+    errorIllustrationAuth: "Greška autentifikacije sa servisom za generisanje slika. Provjerite postavke.",
+    errorIllustrationLimit: "Prekoračen limit zahtjeva ka servisu za generisanje slika. Pokušajte kasnije.",
+    errorIllustrationService: "Privremena greška servisa za generisanje slika. Pokušajte kasnije.",
+    errorIllustration: "Nije moguće kreirati ilustraciju. Pokušajte ponovo.",
+    errorIllustrationModelLoading: "Model za generisanje slika se učitava. Pokušajte za nekoliko sekundi.",
     errorNetwork: "Greška konekcije sa internetom. Provjerite konekciju i pokušajte ponovo.",
     errorUnknown: "Došlo je do neočekivane greške. Pokušajte ponovo.",
     

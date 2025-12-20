@@ -9,15 +9,16 @@ import { translations, getTranslation, type Language } from "@/lib/translations"
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
   // Чтобы показать кнопку, измените значение на true
-  const SHOW_TRANSLATE_BUTTON = true;
+  const SHOW_TRANSLATE_BUTTON = false;
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [language, setLanguage] = useState<Language>("ru");
   const [url, setUrl] = useState("");
-  const [mode, setMode] = useState<"about" | "thesis" | "telegram" | "translate" | null>(
+  const [mode, setMode] = useState<"about" | "thesis" | "telegram" | "translate" | "illustration" | null>(
     null,
   );
   const [result, setResult] = useState<string | null>(null);
+  const [imageResult, setImageResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [processStatus, setProcessStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export default function Home() {
   const handleClear = () => {
     setUrl("");
     setResult(null);
+    setImageResult(null);
     setError(null);
     setMode(null);
     setProcessStatus(null);
@@ -92,16 +94,16 @@ export default function Home() {
 
   // Автоматическая прокрутка к результатам после успешной генерации
   useEffect(() => {
-    if (result && !isLoading && resultRef.current) {
+    if ((result || imageResult) && !isLoading && resultRef.current) {
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     }
-  }, [result, isLoading]);
+  }, [result, imageResult, isLoading]);
 
   // Функция для преобразования ошибок в дружественные сообщения
   const getFriendlyErrorMessage = (
-    errorType: "parse" | "ai" | "translate" | "network" | "unknown",
+    errorType: "parse" | "ai" | "translate" | "illustration" | "network" | "unknown",
     statusCode?: number,
     originalError?: string
   ): string => {
@@ -133,6 +135,21 @@ export default function Home() {
         }
         return t("errorTranslate");
       
+      case "illustration":
+        if (statusCode === 401) {
+          return t("errorIllustrationAuth");
+        }
+        if (statusCode === 429) {
+          return t("errorIllustrationLimit");
+        }
+        if (statusCode === 503) {
+          return t("errorIllustrationModelLoading");
+        }
+        if (statusCode && (statusCode === 500 || statusCode >= 502)) {
+          return t("errorIllustrationService");
+        }
+        return t("errorIllustration");
+      
       case "network":
         return t("errorNetwork");
       
@@ -142,7 +159,7 @@ export default function Home() {
     }
   };
 
-  const handleAction = async (nextMode: "about" | "thesis" | "telegram" | "translate") => {
+  const handleAction = async (nextMode: "about" | "thesis" | "telegram" | "translate" | "illustration") => {
     if (!url.trim()) {
       setResult(t("errorUrlRequired"));
       setMode(null);
@@ -156,6 +173,7 @@ export default function Home() {
     setProcessStatus(t("loadingArticle"));
     setError(null);
     setResult(null);
+    setImageResult(null);
 
     try {
       // Сначала парсим статью
@@ -221,6 +239,45 @@ export default function Home() {
 
         const translateData = await translateResponse.json();
         setResult(translateData.translation || "Перевод не получен.");
+        setProcessStatus(null);
+        setError(null);
+      } else if (nextMode === "illustration") {
+        // Режим генерации иллюстрации
+        setProcessStatus(t("creatingIllustration"));
+        const imageResponse = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            content: parsedData.content,
+            language: language
+          }),
+        });
+
+        if (!imageResponse.ok) {
+          const errorMessage = getFriendlyErrorMessage("illustration", imageResponse.status);
+          setError(errorMessage);
+          setResult(null);
+          setImageResult(null);
+          setIsLoading(false);
+          setProcessStatus(null);
+          return;
+        }
+
+        const imageData = await imageResponse.json();
+        
+        if (!imageData.image) {
+          setError(t("errorIllustration"));
+          setResult(null);
+          setImageResult(null);
+          setIsLoading(false);
+          setProcessStatus(null);
+          return;
+        }
+        
+        setImageResult(imageData.image);
+        setResult(imageData.prompt || null);
         setProcessStatus(null);
         setError(null);
       } else {
@@ -426,6 +483,19 @@ export default function Home() {
                 {t("translateButton")}
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => handleAction("illustration")}
+              disabled={isLoading}
+              title={t("illustrationButtonTitle")}
+              className={`w-full sm:w-auto inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
+                mode === "illustration"
+                  ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
+                  : "dark:bg-slate-800/80 bg-slate-100 dark:text-slate-50 text-slate-900 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200"
+              } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
+            >
+              {t("illustrationButton")}
+            </button>
           </div>
         </section>
 
@@ -459,7 +529,7 @@ export default function Home() {
                   {t("generating")}
                 </span>
               )}
-              {result && !isLoading && (
+              {(result || imageResult) && !isLoading && !imageResult && (
                 <button
                   type="button"
                   onClick={handleCopy}
@@ -474,9 +544,24 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-1 text-sm leading-relaxed dark:text-slate-200 text-slate-700 whitespace-pre-wrap break-words overflow-wrap-anywhere">
-            {result ?? t("resultPlaceholder")}
-          </div>
+          {imageResult ? (
+            <div className="mt-1 space-y-3">
+              <img 
+                src={imageResult} 
+                alt="Generated illustration" 
+                className="w-full rounded-lg border dark:border-slate-700 border-slate-300"
+              />
+              {result && (
+                <div className="text-xs dark:text-slate-400 text-slate-500 italic">
+                  <strong className="dark:text-slate-300 text-slate-600">Промпт:</strong> {result}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-1 text-sm leading-relaxed dark:text-slate-200 text-slate-700 whitespace-pre-wrap break-words overflow-wrap-anywhere">
+              {result ?? t("resultPlaceholder")}
+            </div>
+          )}
         </section>
 
         <footer className="pt-1 text-[11px] sm:text-xs dark:text-slate-500 text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1 break-words">
