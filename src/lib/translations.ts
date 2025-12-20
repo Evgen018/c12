@@ -65,6 +65,23 @@ export const translations = {
     errorNetwork: "Ошибка подключения к интернету. Проверьте соединение и попробуйте еще раз.",
     errorUnknown: "Произошла непредвиденная ошибка. Попробуйте еще раз.",
     
+    // History
+    historyTitle: "История",
+    historyEmpty: "История пуста",
+    historyClear: "Очистить историю",
+    historyClearTitle: "Удалить всю историю",
+    historyLoad: "Загрузить",
+    historyLoadTitle: "Загрузить этот результат",
+    historyDelete: "Удалить",
+    historyDeleteTitle: "Удалить из истории",
+    historyShow: "Показать историю",
+    historyHide: "Скрыть историю",
+    historyItemAbout: "О чем статья",
+    historyItemThesis: "Тезисы",
+    historyItemTelegram: "Пост для Telegram",
+    historyItemTranslate: "Перевод",
+    historyItemIllustration: "Иллюстрация",
+    
     // Footer
     footerService: "Сервис-помощник для работы с англоязычными текстами.",
     footerAI: "Обработка с помощью AI через OpenRouter.",
@@ -132,6 +149,23 @@ export const translations = {
     errorIllustrationModelLoading: "Model za generisanje slika se učitava. Pokušajte za nekoliko sekundi.",
     errorNetwork: "Greška konekcije sa internetom. Provjerite konekciju i pokušajte ponovo.",
     errorUnknown: "Došlo je do neočekivane greške. Pokušajte ponovo.",
+    
+    // History
+    historyTitle: "Istorija",
+    historyEmpty: "Istorija je prazna",
+    historyClear: "Očisti istoriju",
+    historyClearTitle: "Obriši celu istoriju",
+    historyLoad: "Učitaj",
+    historyLoadTitle: "Učitaj ovaj rezultat",
+    historyDelete: "Obriši",
+    historyDeleteTitle: "Obriši iz istorije",
+    historyShow: "Prikaži istoriju",
+    historyHide: "Sakrij istoriju",
+    historyItemAbout: "O čemu je članak",
+    historyItemThesis: "Teze",
+    historyItemTelegram: "Post za Telegram",
+    historyItemTranslate: "Prevod",
+    historyItemIllustration: "Ilustracija",
     
     // Footer
     footerService: "Servis-pomoćnik za rad sa tekstovima na engleskom jeziku.",

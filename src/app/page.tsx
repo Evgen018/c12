@@ -3,8 +3,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Copy, X } from "lucide-react";
+import { AlertCircle, Copy, X, History, Trash2, Clock } from "lucide-react";
 import { translations, getTranslation, type Language } from "@/lib/translations";
+import { 
+  addToHistory, 
+  getHistory, 
+  removeFromHistory, 
+  clearHistory, 
+  formatHistoryDate,
+  type HistoryItem 
+} from "@/lib/history";
 
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
@@ -23,9 +31,67 @@ export default function Home() {
   const [processStatus, setProcessStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const resultRef = useRef<HTMLDivElement>(null);
   
   const t = (key: keyof typeof translations.ru) => getTranslation(language, key);
+  
+  // Загружаем историю при монтировании и при изменении языка
+  useEffect(() => {
+    setHistory(getHistory());
+  }, [language]);
+  
+  // Функция для сохранения в историю
+  const saveToHistory = (
+    url: string,
+    mode: "about" | "thesis" | "telegram" | "translate" | "illustration",
+    result: string | null,
+    imageResult: string | null
+  ) => {
+    if (result || imageResult) {
+      addToHistory({
+        url,
+        mode,
+        result,
+        imageResult,
+        language
+      });
+      // Обновляем историю с небольшой задержкой для надежности
+      setTimeout(() => {
+        setHistory(getHistory());
+      }, 100);
+    }
+  };
+  
+  // Функция для загрузки из истории
+  const loadFromHistory = (item: HistoryItem) => {
+    setUrl(item.url);
+    setMode(item.mode);
+    setResult(item.result);
+    setImageResult(item.imageResult);
+    setLanguage(item.language);
+    setError(null);
+    setShowHistory(false);
+    // Прокручиваем к результату
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+  
+  // Функция для удаления из истории
+  const deleteFromHistory = (id: string) => {
+    removeFromHistory(id);
+    setHistory(getHistory());
+  };
+  
+  // Функция для очистки истории
+  const handleClearHistory = () => {
+    if (confirm(language === "ru" ? "Очистить всю историю?" : "Očistiti celu istoriju?")) {
+      clearHistory();
+      setHistory([]);
+    }
+  };
 
   // Загружаем тему и язык из localStorage при монтировании и применяем сразу
   useEffect(() => {
@@ -238,9 +304,12 @@ export default function Home() {
         }
 
         const translateData = await translateResponse.json();
-        setResult(translateData.translation || "Перевод не получен.");
+        const translationResult = translateData.translation || "Перевод не получен.";
+        setResult(translationResult);
         setProcessStatus(null);
         setError(null);
+        // Сохраняем в историю
+        saveToHistory(url.trim(), "translate", translationResult, null);
       } else if (nextMode === "illustration") {
         // Режим генерации иллюстрации
         setProcessStatus(t("creatingIllustration"));
@@ -277,9 +346,12 @@ export default function Home() {
         }
         
         setImageResult(imageData.image);
-        setResult(imageData.prompt || null);
+        const promptResult = imageData.prompt || null;
+        setResult(promptResult);
         setProcessStatus(null);
         setError(null);
+        // Сохраняем в историю
+        saveToHistory(url.trim(), "illustration", promptResult, imageData.image);
       } else {
         // Для режимов about, thesis, telegram вызываем AI-обработку
         const statusMessages = {
@@ -322,6 +394,8 @@ export default function Home() {
         setResult(aiData.result);
         setProcessStatus(null);
         setError(null);
+        // Сохраняем в историю
+        saveToHistory(url.trim(), nextMode, aiData.result, null);
       }
     } catch (error) {
       console.error("Error in handleAction:", error);
@@ -347,6 +421,14 @@ export default function Home() {
               {t("appName")}
             </p>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="p-2 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors"
+                aria-label={showHistory ? t("historyHide") : t("historyShow")}
+                title={showHistory ? t("historyHide") : t("historyShow")}
+              >
+                <History className="w-5 h-5 dark:text-slate-50 text-slate-900" />
+              </button>
               <button
                 onClick={toggleLanguage}
                 className="px-2.5 py-1.5 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors text-xs font-medium dark:text-slate-300 text-slate-700 border"
@@ -399,6 +481,93 @@ export default function Home() {
             {t("description")}
           </p>
         </header>
+
+        {/* История запросов */}
+        {showHistory && (
+          <section className="rounded-xl dark:border-slate-800 border-slate-200 dark:bg-slate-950/40 bg-slate-50/80 border p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold dark:text-slate-100 text-slate-900 flex items-center gap-2">
+                <History className="w-4 h-4" />
+                {t("historyTitle")}
+              </h2>
+              {history.length > 0 && (
+                <button
+                  onClick={handleClearHistory}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1.5 text-xs font-medium transition dark:bg-slate-800/80 bg-slate-100 dark:text-slate-300 text-slate-700 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200 border"
+                  title={t("historyClearTitle")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>{t("historyClear")}</span>
+                </button>
+              )}
+            </div>
+            
+            {history.length === 0 ? (
+              <p className="text-sm dark:text-slate-400 text-slate-500 text-center py-4">
+                {t("historyEmpty")}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {history.map((item) => {
+                  const modeLabels = {
+                    about: t("historyItemAbout"),
+                    thesis: t("historyItemThesis"),
+                    telegram: t("historyItemTelegram"),
+                    translate: t("historyItemTranslate"),
+                    illustration: t("historyItemIllustration"),
+                  };
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-lg dark:bg-slate-900/60 bg-white/60 dark:border-slate-700 border-slate-300 border p-3 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium dark:text-sky-400 text-sky-600">
+                              {modeLabels[item.mode]}
+                            </span>
+                            <span className="text-xs dark:text-slate-500 text-slate-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatHistoryDate(item.timestamp)}
+                            </span>
+                          </div>
+                          <p className="text-xs dark:text-slate-300 text-slate-700 truncate" title={item.url}>
+                            {item.url}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => loadFromHistory(item)}
+                            className="p-1.5 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors"
+                            title={t("historyLoadTitle")}
+                          >
+                            <svg className="w-4 h-4 dark:text-slate-300 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => deleteFromHistory(item.id)}
+                            className="p-1.5 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors"
+                            title={t("historyDeleteTitle")}
+                          >
+                            <Trash2 className="w-4 h-4 dark:text-slate-300 text-slate-700" />
+                          </button>
+                        </div>
+                      </div>
+                      {(item.result || item.imageResult) && (
+                        <div className="text-xs dark:text-slate-400 text-slate-500 line-clamp-2">
+                          {item.imageResult ? "🖼️ Изображение" : item.result?.substring(0, 100) + "..."}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="space-y-3 sm:space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
