@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Copy, X, History, Trash2, Clock } from "lucide-react";
+import { AlertCircle, Copy, X, History, Trash2, Clock, BarChart3, TrendingUp, Download } from "lucide-react";
 import { translations, getTranslation, type Language } from "@/lib/translations";
 import { 
   addToHistory, 
@@ -13,6 +13,18 @@ import {
   formatHistoryDate,
   type HistoryItem 
 } from "@/lib/history";
+import {
+  generateCacheKey,
+  getFromCache,
+  saveToCache,
+  clearExpiredCache,
+  getCacheStats,
+  clearAllCache,
+} from "@/lib/cache";
+import {
+  trackEvent,
+  getOverallStats,
+} from "@/lib/analytics";
 
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
@@ -32,6 +44,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const resultRef = useRef<HTMLDivElement>(null);
   
@@ -69,7 +82,9 @@ export default function Home() {
     setUrl(item.url);
     setMode(item.mode);
     setResult(item.result);
-    setImageResult(item.imageResult);
+    // Если в истории только флаг [IMAGE], не загружаем изображение
+    // Пользователю нужно будет сгенерировать его заново
+    setImageResult(item.imageResult && item.imageResult !== "[IMAGE]" ? item.imageResult : null);
     setLanguage(item.language);
     setError(null);
     setShowHistory(false);
@@ -158,6 +173,34 @@ export default function Home() {
     }
   };
 
+  // Функция для скачивания изображения
+  const handleDownload = () => {
+    if (imageResult) {
+      try {
+        // Создаем временную ссылку для скачивания
+        const link = document.createElement("a");
+        link.href = imageResult;
+        link.download = `illustration_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Отслеживаем событие
+        trackEvent({ type: "function_used", function: "download_image" });
+      } catch (err) {
+        console.error("Failed to download:", err);
+        trackEvent({ 
+          type: "error", 
+          function: "download_image",
+          error: {
+            message: err instanceof Error ? err.message : String(err),
+            code: err instanceof Error ? err.name : "unknown",
+          },
+        });
+      }
+    }
+  };
+
   // Автоматическая прокрутка к результатам после успешной генерации
   useEffect(() => {
     if ((result || imageResult) && !isLoading && resultRef.current) {
@@ -234,6 +277,15 @@ export default function Home() {
       return;
     }
 
+    // Очищаем устаревший кэш при каждом запросе
+    clearExpiredCache();
+
+    // Отслеживаем использование функции
+    trackEvent({
+      type: "function_use",
+      function: nextMode,
+    });
+
     setIsLoading(true);
     setMode(nextMode);
     setProcessStatus(t("loadingArticle"));
@@ -242,25 +294,44 @@ export default function Home() {
     setImageResult(null);
 
     try {
-      // Сначала парсим статью
-      const parseResponse = await fetch("/api/parse-article", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: url.trim() }),
-      });
+      // Проверяем кэш для парсинга статьи
+      const parseCacheKey = generateCacheKey(url.trim(), "parse", language);
+      const cachedParse = getFromCache<any>(parseCacheKey, "parse");
+      
+      let parsedData;
+      
+      if (cachedParse) {
+        // Используем кэш
+        parsedData = cachedParse;
+        trackEvent({ type: "cache_hit", function: "parse" });
+        console.log("Using cached parse result");
+      } else {
+        // Парсим статью
+        trackEvent({ type: "cache_miss", function: "parse" });
+        trackEvent({ type: "api_call", apiProvider: "openrouter", function: "parse" });
+        
+        const parseResponse = await fetch("/api/parse-article", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: url.trim() }),
+        });
 
-      if (!parseResponse.ok) {
-        const errorMessage = getFriendlyErrorMessage("parse", parseResponse.status);
-        setError(errorMessage);
-        setResult(null);
-        setIsLoading(false);
-        setProcessStatus(null);
-        return;
+        if (!parseResponse.ok) {
+          const errorMessage = getFriendlyErrorMessage("parse", parseResponse.status);
+          setError(errorMessage);
+          setResult(null);
+          setIsLoading(false);
+          setProcessStatus(null);
+          return;
+        }
+
+        parsedData = await parseResponse.json();
+        
+        // Сохраняем в кэш
+        saveToCache(parseCacheKey, parsedData, "parse");
       }
-
-      const parsedData = await parseResponse.json();
 
       // Проверяем наличие контента
       if (!parsedData.content) {
@@ -282,6 +353,23 @@ export default function Home() {
 
       // Если режим перевода, переводим контент
       if (nextMode === "translate") {
+        // Проверяем кэш для перевода
+        const translateCacheKey = generateCacheKey(url.trim(), "translate", language);
+        const cachedTranslate = getFromCache<string>(translateCacheKey, "translate");
+        
+        if (cachedTranslate) {
+          setResult(cachedTranslate);
+          setProcessStatus(null);
+          setError(null);
+          trackEvent({ type: "cache_hit", function: "translate" });
+          saveToHistory(url.trim(), "translate", cachedTranslate, null);
+          setIsLoading(false);
+          return;
+        }
+        
+        trackEvent({ type: "cache_miss", function: "translate" });
+        trackEvent({ type: "api_call", apiProvider: "openrouter", function: "translate" });
+        
         setProcessStatus(t("translating"));
         const translateResponse = await fetch("/api/translate", {
           method: "POST",
@@ -308,9 +396,18 @@ export default function Home() {
         setResult(translationResult);
         setProcessStatus(null);
         setError(null);
+        
+        // Сохраняем в кэш
+        saveToCache(translateCacheKey, translationResult, "translate");
+        
         // Сохраняем в историю
         saveToHistory(url.trim(), "translate", translationResult, null);
       } else if (nextMode === "illustration") {
+        // ВАЖНО: Изображения не кэшируем из-за большого размера (base64 занимает много места)
+        // Изображения всегда генерируются заново, но сохраняются в истории
+        trackEvent({ type: "cache_miss", function: "illustration" });
+        trackEvent({ type: "api_call", apiProvider: "huggingface", function: "illustration" });
+        
         // Режим генерации иллюстрации
         setProcessStatus(t("creatingIllustration"));
         const imageResponse = await fetch("/api/generate-image", {
@@ -350,9 +447,30 @@ export default function Home() {
         setResult(promptResult);
         setProcessStatus(null);
         setError(null);
+        
+        // НЕ сохраняем изображения в кэш - они слишком большие для localStorage
+        // Изображения сохраняются только в истории (пользователь может их загрузить оттуда)
+        
         // Сохраняем в историю
         saveToHistory(url.trim(), "illustration", promptResult, imageData.image);
       } else {
+        // Проверяем кэш для AI обработки
+        const aiCacheKey = generateCacheKey(url.trim(), nextMode, language);
+        const cachedAI = getFromCache<string>(aiCacheKey, "ai");
+        
+        if (cachedAI) {
+          setResult(cachedAI);
+          setProcessStatus(null);
+          setError(null);
+          trackEvent({ type: "cache_hit", function: nextMode });
+          saveToHistory(url.trim(), nextMode, cachedAI, null);
+          setIsLoading(false);
+          return;
+        }
+        
+        trackEvent({ type: "cache_miss", function: nextMode });
+        trackEvent({ type: "api_call", apiProvider: "openrouter", function: nextMode });
+        
         // Для режимов about, thesis, telegram вызываем AI-обработку
         const statusMessages = {
           about: t("analyzingArticle"),
@@ -394,11 +512,27 @@ export default function Home() {
         setResult(aiData.result);
         setProcessStatus(null);
         setError(null);
+        
+        // Сохраняем в кэш
+        saveToCache(aiCacheKey, aiData.result, "ai");
+        
         // Сохраняем в историю
         saveToHistory(url.trim(), nextMode, aiData.result, null);
       }
     } catch (error) {
       console.error("Error in handleAction:", error);
+      
+      // Отслеживаем ошибку
+      trackEvent({
+        type: "error",
+        function: nextMode,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          code: error instanceof Error ? error.name : "unknown",
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      });
+      
       // Проверяем, является ли ошибка сетевой
       if (error instanceof TypeError && error.message.includes("fetch")) {
         setError(getFriendlyErrorMessage("network"));
@@ -421,6 +555,14 @@ export default function Home() {
               {t("appName")}
             </p>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className="p-2 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors"
+                aria-label={showStats ? t("statsHide") : t("statsShow")}
+                title={showStats ? t("statsHide") : t("statsShow")}
+              >
+                <BarChart3 className="w-5 h-5 dark:text-slate-50 text-slate-900" />
+              </button>
               <button
                 onClick={() => setShowHistory(!showHistory)}
                 className="p-2 rounded-lg dark:bg-slate-800/80 bg-slate-100 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200 transition-colors"
@@ -481,6 +623,144 @@ export default function Home() {
             {t("description")}
           </p>
         </header>
+
+        {/* Статистика и аналитика */}
+        {showStats && (
+          <section className="rounded-xl dark:border-slate-800 border-slate-200 dark:bg-slate-950/40 bg-slate-50/80 border p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold dark:text-slate-100 text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                {t("statsTitle")}
+              </h2>
+            </div>
+            
+            {(() => {
+              const stats = getOverallStats();
+              const cacheStats = getCacheStats();
+              const formatBytes = (bytes: number) => {
+                if (bytes < 1024) return `${bytes} Б`;
+                if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+                return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+              };
+              
+              return (
+                <div className="space-y-4">
+                  {/* Использование функций */}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wide">
+                      {t("statsFunctions")}
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsTotal")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">{stats.functions.total}</div>
+                      </div>
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsLast7Days")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">
+                          {Object.values(stats.functions.last7Days).reduce((a, b) => a + b, 0)}
+                        </div>
+                      </div>
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsLast30Days")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">
+                          {Object.values(stats.functions.last30Days).reduce((a, b) => a + b, 0)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      {Object.entries(stats.functions.byFunction).map(([func, count]) => (
+                        <div key={func} className="flex justify-between items-center">
+                          <span className="dark:text-slate-300 text-slate-700 capitalize">{func}</span>
+                          <span className="dark:text-slate-400 text-slate-500 font-medium">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* API вызовы */}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wide">
+                      {t("statsAPI")}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsTotalAPICalls")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">{stats.api.total}</div>
+                      </div>
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsCacheHitRate")}</div>
+                        <div className="text-lg font-semibold dark:text-sky-400 text-sky-600">{stats.api.cacheHitRate}%</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <div className="flex-1 dark:bg-green-900/20 bg-green-50 rounded-lg p-2 text-center">
+                        <div className="dark:text-green-400 text-green-600 font-medium">{stats.api.cacheHits}</div>
+                        <div className="dark:text-green-500 text-green-600 text-[10px]">{t("statsCacheHits")}</div>
+                      </div>
+                      <div className="flex-1 dark:bg-orange-900/20 bg-orange-50 rounded-lg p-2 text-center">
+                        <div className="dark:text-orange-400 text-orange-600 font-medium">{stats.api.cacheMisses}</div>
+                        <div className="dark:text-orange-500 text-orange-600 text-[10px]">{t("statsCacheMisses")}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Кэш */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wide">
+                        {t("statsCache")}
+                      </h3>
+                      {cacheStats.total > 0 && (
+                        <button
+                          onClick={() => {
+                            if (confirm(language === "ru" ? "Очистить весь кэш?" : "Očistiti ceo keš?")) {
+                              clearAllCache();
+                              setShowStats(false);
+                              setTimeout(() => setShowStats(true), 100);
+                            }
+                          }}
+                          className="text-xs dark:text-slate-400 text-slate-500 hover:dark:text-slate-300 hover:text-slate-700"
+                          title={t("statsClearCacheTitle")}
+                        >
+                          {t("statsClearCache")}
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsCacheEntries")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">{cacheStats.total}</div>
+                      </div>
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2">
+                        <div className="dark:text-slate-400 text-slate-500">{t("statsCacheSize")}</div>
+                        <div className="text-lg font-semibold dark:text-slate-100 text-slate-900">{formatBytes(cacheStats.totalSize)}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Ошибки */}
+                  {stats.errors.total > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wide">
+                        {t("statsErrors")}
+                      </h3>
+                      <div className="dark:bg-slate-900/60 bg-white/60 rounded-lg p-2 text-xs">
+                        <div className="dark:text-slate-400 text-slate-500 mb-1">{t("statsTotalErrors")}</div>
+                        <div className="text-lg font-semibold dark:text-red-400 text-red-600">{stats.errors.total}</div>
+                        {stats.errors.last7Days > 0 && (
+                          <div className="dark:text-slate-500 text-slate-400 mt-1">
+                            {t("statsLast7Days")}: {stats.errors.last7Days}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </section>
+        )}
 
         {/* История запросов */}
         {showHistory && (
@@ -558,7 +838,9 @@ export default function Home() {
                       </div>
                       {(item.result || item.imageResult) && (
                         <div className="text-xs dark:text-slate-400 text-slate-500 line-clamp-2">
-                          {item.imageResult ? "🖼️ Изображение" : item.result?.substring(0, 100) + "..."}
+                          {item.imageResult === "[IMAGE]" ? "🖼️ Изображение (нужно сгенерировать заново)" : 
+                           item.imageResult ? "🖼️ Изображение" : 
+                           item.result?.substring(0, 100) + "..."}
                         </div>
                       )}
                     </div>
@@ -715,11 +997,22 @@ export default function Home() {
 
           {imageResult ? (
             <div className="mt-1 space-y-3">
-              <img 
-                src={imageResult} 
-                alt="Generated illustration" 
-                className="w-full rounded-lg border dark:border-slate-700 border-slate-300"
-              />
+              <div className="relative">
+                <img 
+                  src={imageResult} 
+                  alt="Generated illustration" 
+                  className="w-full rounded-lg border dark:border-slate-700 border-slate-300"
+                />
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="absolute top-2 right-2 p-2 rounded-lg dark:bg-slate-800/90 bg-white/90 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-100 transition-colors shadow-lg"
+                  title={t("downloadButtonTitle")}
+                  aria-label={t("downloadButtonTitle")}
+                >
+                  <Download className="w-5 h-5 dark:text-slate-50 text-slate-900" />
+                </button>
+              </div>
               {result && (
                 <div className="text-xs dark:text-slate-400 text-slate-500 italic">
                   <strong className="dark:text-slate-300 text-slate-600">Промпт:</strong> {result}

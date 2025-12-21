@@ -33,6 +33,17 @@ export function getHistory(): HistoryItem[] {
 }
 
 /**
+ * Оценить размер записи истории
+ */
+function estimateHistoryItemSize(item: HistoryItem): number {
+  try {
+    return new Blob([JSON.stringify(item)]).size;
+  } catch {
+    return JSON.stringify(item).length * 2;
+  }
+}
+
+/**
  * Добавить запись в историю
  */
 export function addToHistory(item: Omit<HistoryItem, "id" | "timestamp">): void {
@@ -41,23 +52,69 @@ export function addToHistory(item: Omit<HistoryItem, "id" | "timestamp">): void 
   try {
     const history = getHistory();
     
-    // Создаем новую запись
-    const newItem: HistoryItem = {
+    // ВАЖНО: Не сохраняем изображения в историю - они слишком большие
+    // Сохраняем только флаг, что изображение было сгенерировано
+    const historyItem: HistoryItem = {
       ...item,
+      imageResult: item.imageResult ? "[IMAGE]" : null, // Заменяем изображение на флаг
+      result: item.result ? item.result.substring(0, 5000) : null, // Ограничиваем длину текста
       id: `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
     };
     
     // Добавляем в начало
-    history.unshift(newItem);
+    history.unshift(historyItem);
     
     // Ограничиваем количество записей
-    const limitedHistory = history.slice(0, MAX_HISTORY_ITEMS);
+    let limitedHistory = history.slice(0, MAX_HISTORY_ITEMS);
+    
+    // Проверяем размер и удаляем самые старые, если нужно
+    try {
+      const totalSize = estimateHistoryItemSize(limitedHistory as any);
+      const MAX_HISTORY_SIZE = 5 * 1024 * 1024; // 5 МБ максимум
+      
+      if (totalSize > MAX_HISTORY_SIZE) {
+        // Удаляем самые старые записи, пока размер не станет приемлемым
+        limitedHistory = limitedHistory.sort((a, b) => b.timestamp - a.timestamp);
+        while (limitedHistory.length > 0 && estimateHistoryItemSize(limitedHistory as any) > MAX_HISTORY_SIZE) {
+          limitedHistory.pop(); // Удаляем самую старую
+        }
+        console.warn(`History too large, reduced to ${limitedHistory.length} items`);
+      }
+    } catch (sizeError) {
+      // Если не удалось оценить размер, просто ограничиваем количеством
+      limitedHistory = limitedHistory.slice(0, MAX_HISTORY_ITEMS);
+    }
     
     // Сохраняем
     localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
   } catch (error) {
     console.error("Error saving to history:", error);
+    
+    // Если переполнение, пытаемся очистить старые записи
+    if (error instanceof DOMException && error.name === "QuotaExceededError") {
+      console.warn("History quota exceeded, clearing oldest entries...");
+      try {
+        const history = getHistory();
+        // Удаляем половину самых старых записей
+        const sorted = history.sort((a, b) => b.timestamp - a.timestamp);
+        const reduced = sorted.slice(0, Math.floor(MAX_HISTORY_ITEMS / 2));
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(reduced));
+        
+        // Пробуем добавить новую запись еще раз
+        const historyItem: HistoryItem = {
+          ...item,
+          imageResult: item.imageResult ? "[IMAGE]" : null,
+          result: item.result ? item.result.substring(0, 5000) : null,
+          id: `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          timestamp: Date.now(),
+        };
+        const updated = [historyItem, ...reduced].slice(0, MAX_HISTORY_ITEMS);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      } catch (retryError) {
+        console.error("Failed to save to history after cleanup:", retryError);
+      }
+    }
   }
 }
 

@@ -42,6 +42,8 @@ export const translations = {
     copyButton: "Копировать",
     copyButtonTitle: "Копировать результат",
     copied: "Скопировано!",
+    downloadButton: "Скачать",
+    downloadButtonTitle: "Скачать изображение",
     
     // Errors
     errorTitle: "Ошибка",
@@ -81,6 +83,28 @@ export const translations = {
     historyItemTelegram: "Пост для Telegram",
     historyItemTranslate: "Перевод",
     historyItemIllustration: "Иллюстрация",
+    
+    // Statistics
+    statsTitle: "Статистика",
+    statsShow: "Показать статистику",
+    statsHide: "Скрыть статистику",
+    statsFunctions: "Использование функций",
+    statsTotal: "Всего использований",
+    statsLast7Days: "За 7 дней",
+    statsLast30Days: "За 30 дней",
+    statsErrors: "Ошибки",
+    statsTotalErrors: "Всего ошибок",
+    statsRecentErrors: "Последние ошибки",
+    statsAPI: "API вызовы",
+    statsTotalAPICalls: "Всего вызовов",
+    statsCacheHitRate: "Попаданий в кэш",
+    statsCacheHits: "Попаданий",
+    statsCacheMisses: "Промахов",
+    statsCache: "Кэш",
+    statsCacheEntries: "Записей в кэше",
+    statsCacheSize: "Размер кэша",
+    statsClearCache: "Очистить кэш",
+    statsClearCacheTitle: "Удалить весь кэш",
     
     // Footer
     footerService: "Сервис-помощник для работы с англоязычными текстами.",
@@ -127,6 +151,8 @@ export const translations = {
     copyButton: "Kopiraj",
     copyButtonTitle: "Kopiraj rezultat",
     copied: "Kopirano!",
+    downloadButton: "Preuzmi",
+    downloadButtonTitle: "Preuzmi sliku",
     
     // Errors
     errorTitle: "Greška",
@@ -166,6 +192,28 @@ export const translations = {
     historyItemTelegram: "Post za Telegram",
     historyItemTranslate: "Prevod",
     historyItemIllustration: "Ilustracija",
+    
+    // Statistics
+    statsTitle: "Statistika",
+    statsShow: "Prikaži statistiku",
+    statsHide: "Sakrij statistiku",
+    statsFunctions: "Korišćenje funkcija",
+    statsTotal: "Ukupno korišćenja",
+    statsLast7Days: "Poslednjih 7 dana",
+    statsLast30Days: "Poslednjih 30 dana",
+    statsErrors: "Greške",
+    statsTotalErrors: "Ukupno grešaka",
+    statsRecentErrors: "Poslednje greške",
+    statsAPI: "API pozivi",
+    statsTotalAPICalls: "Ukupno poziva",
+    statsCacheHitRate: "Pogodaka u keš",
+    statsCacheHits: "Pogodaka",
+    statsCacheMisses: "Promašaja",
+    statsCache: "Keš",
+    statsCacheEntries: "Unosa u kešu",
+    statsCacheSize: "Veličina keša",
+    statsClearCache: "Očisti keš",
+    statsClearCacheTitle: "Obriši ceo keš",
     
     // Footer
     footerService: "Servis-pomoćnik za rad sa tekstovima na engleskom jeziku.",
