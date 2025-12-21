@@ -186,16 +186,17 @@ export default function Home() {
         document.body.removeChild(link);
         
         // Отслеживаем событие
-        trackEvent({ type: "function_used", function: "download_image" });
+        trackEvent({ type: "function_use", function: "illustration", metadata: { action: "download" } });
       } catch (err) {
         console.error("Failed to download:", err);
         trackEvent({ 
           type: "error", 
-          function: "download_image",
+          function: "illustration",
           error: {
             message: err instanceof Error ? err.message : String(err),
             code: err instanceof Error ? err.name : "unknown",
           },
+          metadata: { action: "download" },
         });
       }
     }
