@@ -29,6 +29,8 @@ import {
   canGenerateImage,
   getRemainingGenerations,
   incrementImageCount,
+  getTimeUntilMidnight,
+  formatTimeRemaining,
 } from "@/lib/imageLimit";
 
 export default function Home() {
@@ -52,6 +54,7 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [remainingImages, setRemainingImages] = useState(3);
+  const [countdown, setCountdown] = useState<string>("00:00:00");
   const resultRef = useRef<HTMLDivElement>(null);
   
   const t = (key: keyof typeof translations.ru) => getTranslation(language, key);
@@ -64,6 +67,22 @@ export default function Home() {
   // Обновляем счетчик оставшихся генераций изображений
   useEffect(() => {
     setRemainingImages(getRemainingGenerations());
+  }, []);
+  
+  // Обновляем обратный отсчет каждую секунду
+  useEffect(() => {
+    const updateCountdown = () => {
+      const seconds = getTimeUntilMidnight();
+      setCountdown(formatTimeRemaining(seconds));
+    };
+    
+    // Обновляем сразу
+    updateCountdown();
+    
+    // Обновляем каждую секунду
+    const interval = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(interval);
   }, []);
   
   // Функция для сохранения в историю
@@ -975,9 +994,16 @@ export default function Home() {
               >
                 {t("illustrationButton")}
               </button>
-              <span className="text-[10px] dark:text-slate-400 text-slate-500 text-center">
-                {t("imageLimitRemaining").replace("{count}", remainingImages.toString())}
-              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] dark:text-slate-400 text-slate-500 text-center">
+                  {t("imageLimitRemaining").replace("{count}", remainingImages.toString())}
+                </span>
+                {remainingImages === 0 && (
+                  <span className="text-[10px] dark:text-slate-400 text-slate-500 text-center font-mono">
+                    {t("imageLimitNextReset").replace("{time}", countdown)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </section>

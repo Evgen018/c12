@@ -93,3 +93,24 @@ export function resetImageLimit(): void {
   }
 }
 
+/**
+ * Получить время до полуночи в секундах
+ */
+export function getTimeUntilMidnight(): number {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+}
+
+/**
+ * Форматировать секунды в формат ЧЧ:ММ:СС
+ */
+export function formatTimeRemaining(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+

@@ -26,6 +26,7 @@ export const translations = {
     illustrationButtonTitle: "Создать иллюстрацию для статьи",
     imageLimitReached: "Достигнут лимит генераций изображений на сегодня (3 в сутки)",
     imageLimitRemaining: "Осталось генераций: {count} из 3",
+    imageLimitNextReset: "* - До следующей генерации: {time}",
     
     // Status messages
     loadingArticle: "Загружаю статью",
@@ -137,6 +138,7 @@ export const translations = {
     illustrationButtonTitle: "Kreiraj ilustraciju za članak",
     imageLimitReached: "Dostignut je limit generacija slika za danas (3 dnevno)",
     imageLimitRemaining: "Preostale generacije: {count} od 3",
+    imageLimitNextReset: "* - Do sledeće generacije: {time}",
     
     // Status messages
     loadingArticle: "Učitavam članak",
