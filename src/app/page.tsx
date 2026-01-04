@@ -953,9 +953,14 @@ export default function Home() {
 
         {processStatus && (
           <div className="rounded-xl dark:bg-sky-500/10 bg-sky-50 dark:border-sky-500/20 border-sky-200 border p-3 sm:p-4">
-            <p className="text-sm dark:text-sky-400 text-sky-600 font-medium break-words">
-              {processStatus}
-            </p>
+            <div className="text-sm dark:text-sky-400 text-sky-600 font-medium flex items-baseline gap-0.5">
+              <span>{processStatus}</span>
+              <span className="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            </div>
           </div>
         )}
 

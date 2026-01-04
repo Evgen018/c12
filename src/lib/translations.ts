@@ -26,15 +26,15 @@ export const translations = {
     illustrationButtonTitle: "Создать иллюстрацию для статьи",
     
     // Status messages
-    loadingArticle: "Загружаю статью…",
-    analyzingArticle: "Анализирую статью…",
-    formingThesis: "Формирую тезисы…",
-    creatingTelegramPost: "Создаю пост для Telegram…",
-    translating: "Перевожу статью…",
-    creatingIllustration: "Создаю иллюстрацию…",
-    generatingPrompt: "Создаю промпт для изображения…",
-    generatingImage: "Генерирую изображение…",
-    generating: "Идет генерация…",
+    loadingArticle: "Загружаю статью",
+    analyzingArticle: "Анализирую статью",
+    formingThesis: "Формирую тезисы",
+    creatingTelegramPost: "Создаю пост для Telegram",
+    translating: "Перевожу статью",
+    creatingIllustration: "Создаю иллюстрацию",
+    generatingPrompt: "Создаю промпт для изображения",
+    generatingImage: "Генерирую изображение",
+    generating: "Идет генерация",
     
     // Results
     resultTitle: "Результат",
@@ -135,15 +135,15 @@ export const translations = {
     illustrationButtonTitle: "Kreiraj ilustraciju za članak",
     
     // Status messages
-    loadingArticle: "Učitavam članak…",
-    analyzingArticle: "Analiziram članak…",
-    formingThesis: "Formiram teze…",
-    creatingTelegramPost: "Kreiram post za Telegram…",
-    translating: "Prevodim članak…",
-    creatingIllustration: "Kreiram ilustraciju…",
-    generatingPrompt: "Kreiram prompt za sliku…",
-    generatingImage: "Generišem sliku…",
-    generating: "Generišem…",
+    loadingArticle: "Učitavam članak",
+    analyzingArticle: "Analiziram članak",
+    formingThesis: "Formiram teze",
+    creatingTelegramPost: "Kreiram post za Telegram",
+    translating: "Prevodim članak",
+    creatingIllustration: "Kreiram ilustraciju",
+    generatingPrompt: "Kreiram prompt za sliku",
+    generatingImage: "Generišem sliku",
+    generating: "Generišem",
     
     // Results
     resultTitle: "Rezultat",

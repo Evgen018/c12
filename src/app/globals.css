@@ -58,3 +58,40 @@
   }
 }
 
+/* Анимация трёх точек */
+@keyframes dotFlashing {
+  0% {
+    opacity: 0;
+  }
+  50%, 100% {
+    opacity: 1;
+  }
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  padding-bottom: 0.1em;
+}
+
+.loading-dots span {
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: dotFlashing 1.4s infinite;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
