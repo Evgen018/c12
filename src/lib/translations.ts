@@ -22,8 +22,10 @@ export const translations = {
     telegramButtonTitle: "Создать пост для Telegram на основе статьи",
     translateButton: "Перевести",
     translateButtonTitle: "Перевести статью на русский язык",
-    illustrationButton: "Иллюстрация",
+    illustrationButton: "Иллюстрация *",
     illustrationButtonTitle: "Создать иллюстрацию для статьи",
+    imageLimitReached: "Достигнут лимит генераций изображений на сегодня (3 в сутки)",
+    imageLimitRemaining: "Осталось генераций: {count} из 3",
     
     // Status messages
     loadingArticle: "Загружаю статью",
@@ -131,8 +133,10 @@ export const translations = {
     telegramButtonTitle: "Kreiraj post za Telegram na osnovu članka",
     translateButton: "Prevedi",
     translateButtonTitle: "Prevedi članak na crnogorski jezik",
-    illustrationButton: "Ilustracija",
+    illustrationButton: "Ilustracija *",
     illustrationButtonTitle: "Kreiraj ilustraciju za članak",
+    imageLimitReached: "Dostignut je limit generacija slika za danas (3 dnevno)",
+    imageLimitRemaining: "Preostale generacije: {count} od 3",
     
     // Status messages
     loadingArticle: "Učitavam članak",

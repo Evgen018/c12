@@ -25,6 +25,11 @@ import {
   trackEvent,
   getOverallStats,
 } from "@/lib/analytics";
+import {
+  canGenerateImage,
+  getRemainingGenerations,
+  incrementImageCount,
+} from "@/lib/imageLimit";
 
 export default function Home() {
   // Управление видимостью кнопки "Перевести"
@@ -46,6 +51,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [remainingImages, setRemainingImages] = useState(3);
   const resultRef = useRef<HTMLDivElement>(null);
   
   const t = (key: keyof typeof translations.ru) => getTranslation(language, key);
@@ -54,6 +60,11 @@ export default function Home() {
   useEffect(() => {
     setHistory(getHistory());
   }, [language]);
+  
+  // Обновляем счетчик оставшихся генераций изображений
+  useEffect(() => {
+    setRemainingImages(getRemainingGenerations());
+  }, []);
   
   // Функция для сохранения в историю
   const saveToHistory = (
@@ -278,6 +289,15 @@ export default function Home() {
       return;
     }
 
+    // Проверяем лимит генераций изображений
+    if (nextMode === "illustration" && !canGenerateImage()) {
+      setError(t("imageLimitReached"));
+      setMode(null);
+      setProcessStatus(null);
+      setResult(null);
+      return;
+    }
+
     // Очищаем устаревший кэш при каждом запросе
     clearExpiredCache();
 
@@ -448,6 +468,10 @@ export default function Home() {
         setResult(promptResult);
         setProcessStatus(null);
         setError(null);
+        
+        // Увеличиваем счетчик генераций изображений
+        incrementImageCount();
+        setRemainingImages(getRemainingGenerations());
         
         // НЕ сохраняем изображения в кэш - они слишком большие для localStorage
         // Изображения сохраняются только в истории (пользователь может их загрузить оттуда)
@@ -935,19 +959,26 @@ export default function Home() {
                 {t("translateButton")}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => handleAction("illustration")}
-              disabled={isLoading}
-              title={t("illustrationButtonTitle")}
-              className={`w-full sm:w-auto inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
-                mode === "illustration"
-                  ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
-                  : "dark:bg-slate-800/80 bg-slate-100 dark:text-slate-50 text-slate-900 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200"
-              } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
-            >
-              {t("illustrationButton")}
-            </button>
+            <div className="w-full sm:w-auto flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => handleAction("illustration")}
+                disabled={isLoading || remainingImages === 0}
+                title={t("illustrationButtonTitle")}
+                className={`w-full sm:w-auto inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition border ${
+                  mode === "illustration"
+                    ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
+                    : remainingImages === 0
+                    ? "dark:bg-slate-800/50 bg-slate-100/50 dark:text-slate-400 text-slate-400 dark:border-slate-700 border-slate-300 cursor-not-allowed"
+                    : "dark:bg-slate-800/80 bg-slate-100 dark:text-slate-50 text-slate-900 dark:border-slate-700 border-slate-300 dark:hover:bg-slate-700/90 hover:bg-slate-200"
+                } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
+              >
+                {t("illustrationButton")}
+              </button>
+              <span className="text-[10px] dark:text-slate-400 text-slate-500 text-center">
+                {t("imageLimitRemaining").replace("{count}", remainingImages.toString())}
+              </span>
+            </div>
           </div>
         </section>
 
